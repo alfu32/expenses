@@ -26,7 +26,7 @@
 				fill: _fill
 			}
 			function _loanMonthlyPayment(parms){
-				var monthlyInterest=Math.pow(1+parms.interest,1/12)-1;
+				var monthlyInterest=Math.pow(1+parms.interest/100,1/12)-1;
 				console.log("_loanMonthlyPayment",parms,monthlyInterest);
 
 				return parms.sum*monthlyInterest/(1 - 1/Math.pow(1+monthlyInterest,parms.months))
@@ -126,102 +126,93 @@
 					break;
 				}
 	        }
-	        _main.dropFiles=function($event,$data){
-	        	console.log("dropFiles",$event,$data);
+	        _main.dropFiles=function($event,$files){
+	        	console.log("dropFiles",$event,$files);
+	        	var x=JSON.parse($files[0].content);
+	        	console.log(x);
+	        	$scope.model=Object.keys(x).map(function(k){
+	        		v=x[k]
+	        		v.startDate=new Date(v.startDate)
+	        		v.endDate=new Date(v.endDate);
+	        		return v;
+	        	})
+	        	update();
+	        	$apply();
 	        }
 	        $scope.newPayment={};
 	        var sch=[]
 	        var TOTAL={key:"TOTAL",values:[],def:{name:"TOTAL"}};
-	        /*$scope.addPayment=function(){
-	        	var x=$scope.newPayment;
-	        	var sch1=updateSeries(x.name,x)
-	        	if(TOTAL.values.length==0)TOTAL.values=[sch1[0]];
+	        function update(){
 	        	var span=getSpanTotal();
+	        	var TOTAL={
+	        		key:"TOTAL",
+	        		values:scheduledPayment.getSchedule(new Date(span.startDate),new Date(span.endDate),0)
+	        	}
 
-	        	TOTAL.values=span;
-	        	sch1=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),sch1)
-	        	$scope.data.push({
-	        		key:x.name,
-	        		values:sch1,
-	        		def:angular.extend({},x)
-	        	})
-	        	$scope.data=$scope.data.map(function(v,i){
-	        		if(v.key=="TOTAL")return v;
-	        		v.values=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),v.values)
-	        		v.values.forEach(function(d,i){
-	        			TOTAL.values[i][1]+=d[1];
-	        		})
-	        		return v;
-	        	})
-	        	$scope.newPayment={};
+	        	$scope.data=[TOTAL];
+	        	Object.keys($scope.model)
+	        	.forEach(function(k){
+	        		var def=$scope.model[k];
+					var monthlyPayment=def.monthlyPayment;
+		        	switch(def.type){
+		        		case "PAYMENT":
+		        		break;
+		        		case "LOAN":
+							var sm=def.startDate.getFullYear()*12+def.startDate.getMonth();
+							var em=def.endDate.getFullYear()*12+def.endDate.getMonth();
+		        			monthlyPayment=scheduledPayment.loanPayment({months:em-sm,sum:def.sum,interest:def.interest})
+		        		break;
+		        	}
+		        	var schedule=scheduledPayment.fill(
+		        		scheduledPayment.getSchedule(new Date(span.startDate),new Date(span.endDate),0),
+		        		scheduledPayment.getSchedule(def.startDate,def.endDate,monthlyPayment)
+		        	);
+		        	schedule.forEach(function(d){
+		        		TOTAL.values.forEach(function(t){
+		        			
+		        			if((t[0]-d[0])===0){
+		        				//console.log(d,t);
+		        				t[1]+=d[1];
+		        			}
+		        		})
+		        	});
+		        	$scope.data.push({
+		        		key:def.name,
+		        		values:schedule
+		        	})
+	        	});
 	        	$apply();
-	        	console.log($scope.model,$scope.data);
-	        }*/
+	        }
 
 	        $scope.addPayment=function(){
 	        	var x=$scope.newPayment;
-	        	x.interest=x.interest/100
 	        	$scope.model[x.name]=angular.extend({},x);
-	        	var monthlyPayment=x.monthlyPayment;
-	        	switch(x.type){
-	        		case "PAYMENT":
-	        		break;
-	        		case "LOAN":
-						var sm=x.startDate.getFullYear()*12+x.startDate.getMonth();
-						var em=x.endDate.getFullYear()*12+x.endDate.getMonth();
-	        			monthlyPayment=scheduledPayment.loanPayment({months:em-sm,sum:x.sum,interest:x.interest})
-	        		break;
-	        	}
-	        	var sch1=scheduledPayment.getSchedule(x.startDate,x.endDate,monthlyPayment);
-	        	console.log("sch1",sch1);
-	        	if(TOTAL.values.length==0)TOTAL.values=[sch1[0]];
-	        	TOTAL.values=scheduledPayment.max(TOTAL.values,sch1);
-	        	sch1=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),sch1)
-	        	$scope.data.push({
-	        		key:x.name,
-	        		values:sch1
-	        	})
-	        	$scope.data=$scope.data.map(function(v,i){
-	        		if(v.key=="TOTAL")return v;
-	        		v.values=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),v.values)
-	        		v.values.forEach(function(d,i){
-	        			TOTAL.values[i][1]+=d[1];
-	        		})
-	        		return v;
-	        	})
+	        	update()
 	        	$scope.newPayment={};
 	        	$apply();
-	        	console.log($scope.model,$scope.data);
 	        }
 
-	        function updateSeries(name,def){
+	        function updateSeries(def){
 	        	var x=def;
-	        	$scope.model[x.name]=angular.extend({},x);
-	        	var monthlyPayment=x.monthlyPayment;
-	        	switch(x.type){
-	        		case "PAYMENT":
-	        		break;
-	        		case "LOAN":
-						var sm=x.startDate.getFullYear()*12+x.startDate.getMonth();
-						var em=x.endDate.getFullYear()*12+x.endDate.getMonth();
-	        			monthlyPayment=scheduledPayment.loanPayment({months:em-sm,sum:x.sum,interest:x.interest})
-	        		break;
-	        	}
-	        	var sch1=scheduledPayment.getSchedule(x.startDate,x.endDate,monthlyPayment);
-	        	console.log("sch1",sch1);
-	        	return sch1;
+	        	$scope.model[def.name]=angular.extend({},def);
 	        }
 	        function getSpanTotal(){
-	        	var x=$scope.data.reduce(function(ac,series,i,d){
-	        		if(series.name=="TOTAL")return ac;
-	        		ac.min=Math.min(ac.min,series.def.startDate);
-	        		ac.max=Math.max(ac.max,series.def.endDate);
+	        	var x=Object.keys($scope.model)
+	        	.reduce(function(ac,k){
+	        		var def=$scope.model[k];
+	        		if(def.name=="TOTAL")return ac;
+	        		ac.startDate=Math.min(ac.startDate,def.startDate);
+	        		ac.endDate=Math.max(ac.endDate,def.endDate);
 	        		return ac;
-	        	},{min:Infinity,max:-Infinity})
-	        	return scheduledPayment.getSchedule(new Date(x.min),new Date(x.max),0);
+
+	        	},{startDate:Infinity,endDate:-Infinity});
+	        	return x;//{startDate:new Date(x.startDate),endDate:new Date(x.endDate)};
 	        }
 	        $scope.changed=function(name,def){
+	        	$scope.model[name]=angular.extend({},def);
 	        	console.log(name,def);
+	        	update();
+	        	$apply();
 	        }
 		    $scope.data = [
 		    	TOTAL

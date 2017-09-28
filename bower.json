@@ -1,0 +1,22 @@
+{
+  "name": "expenses",
+  "description": "graphical expenses planner",
+  "main": "index.html",
+  "authors": [
+    "alfu32 <ioan.alferaru@gmail.com>"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/alfu32/expenses",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular-nvd3": "^1.0.9",
+    "material-design-lite": "^1.3.0",
+    "file-saver": "^1.3.3"
+  }
+}

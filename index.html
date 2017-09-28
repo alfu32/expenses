@@ -1,0 +1,269 @@
+﻿<html>
+<head>
+	<meta charset="utf-8">
+	<title>expenses planner</title>
+	<link rel="stylesheet" href="bower_components/nvd3/build/nv.d3.css">
+	<style type="text/css">
+		.short-input{
+			width:5em;
+		}
+	</style>
+	<script src="bower_components/angular/angular.js"></script>
+	<script src="bower_components/d3/d3.js"></script>
+	<script src="expenses.js"></script>
+	<script src="ng-drag-drop.js"></script>
+	<script src="ng-key.js"></script>
+	<script type="text/javascript" src="bower_components/file-saver/FileSaver.js"></script>
+	<script src="bower_components/nvd3/build/nv.d3.js"></script>
+	<script src="bower_components/angular-nvd3/dist/angular-nvd3.js"></script>
+	<script>
+		angular.module("xpenses",["nvd3","ng-drag-drop","ng-key"])
+		.factory("scheduledPayment",function(){
+			return {
+				getSchedule:_get,
+				loanPayment:_loanMonthlyPayment,
+				max: _max,
+				fill: _fill
+			}
+			function _loanMonthlyPayment(parms){
+				var monthlyInterest=Math.pow(1+parms.interest,1/12)-1;
+				console.log("_loanMonthlyPayment",parms,monthlyInterest);
+
+				return parms.sum*monthlyInterest/(1 - 1/Math.pow(1+monthlyInterest,parms.months))
+			}
+			function _get(startDate,endDate,value){
+				var sm=startDate.getFullYear()*12+startDate.getMonth();
+				var em=endDate.getFullYear()*12+endDate.getMonth();
+				console.log(sm,em,value);
+				return new Array(em-sm)
+					.fill(value)
+					.map(function(v,i,a){
+						var d=new Date(startDate.getFullYear(),i)
+						return [d,v]
+					})
+			}
+			function _max(sch1,sch2){
+				var startD=new Date(Math.min(sch1[0][0],sch2[0][0]));
+				var endD=new Date(Math.max(sch1[sch1.length-1][0],sch2[sch2.length-1][0]));
+				console.log("startD,endD",startD,endD);
+				return _get(startD,endD,0);
+			}
+			function _fill(sch1,sch2){
+				var startD=sch2[0][0];
+				var endD=sch2[sch2.length-1][0];
+				var iof=0;
+				return sch1.map(function(v,i,a){
+					if(v[0]>=startD && v[0]<=endD){
+						v[1]=sch2[iof][1];
+						iof++;
+					}
+					return v;
+				})
+			}
+		})
+		.controller("mainController",function MainController($scope,$timeout,$http,scheduledPayment){
+			var _main=this;
+			$scope.appData={
+				ver:"1.0.0",
+				name:"expenses"
+			}
+			$scope.model={}
+			$scope.options = {
+	            chart: {
+	                type: 'lineChart',
+	                height: 450,
+	                margin : {
+	                    top: 20,
+	                    right: 20,
+	                    bottom: 60,
+	                    left: 65
+	                },
+	                padding : {
+	                    top: 20,
+	                    right: 20,
+	                    bottom: 20,
+	                    left: 20
+	                },
+	                x: function(d){ return d[0]; },
+	                y: function(d){ return d[1]; },
+	                average: function(d) { return d.mean; },
+
+	                color: d3.scale.category10().range(),
+	                duration: 300,
+	                useInteractiveGuideline: true,
+	                clipVoronoi: false,
+
+	                xAxis: {
+	                    axisLabel: 'X Axis',
+	                    tickFormat: function(d) {
+	                        return d3.time.format('%m/%y')(new Date(d))
+	                    },
+	                    showMaxMin: false,
+	                    staggerLabels: true
+	                },
+
+	                yAxis: {
+	                    axisLabel: 'Y Axis',
+	                    tickFormat: function(d){
+	                        return d3.format('.2f')(d);
+	                    },
+	                    axisLabelDistance: 20
+	                }
+	            }
+	        };
+	        $scope.$on("$drop",function(ev,data){
+	        	console.log("drop",ev,data)
+	        })
+	        _main.keyPress=function($type,$stream){
+	        	console.log("$key",$stream);
+				switch($stream){
+					case "ctrl-shift-S":
+						var blob = new Blob([JSON.stringify($scope.model)], {type: "text/plain;charset=utf-8"});
+						saveAs(blob,"model.json");
+					break;
+					case "ctrl-shift-S":
+
+					break;
+				}
+	        }
+	        _main.dropFiles=function($event,$data){
+	        	console.log("dropFiles",$event,$data);
+	        }
+	        $scope.newPayment={};
+	        var sch=[]
+	        var TOTAL={key:"TOTAL",values:[],def:{name:"TOTAL"}};
+	        /*$scope.addPayment=function(){
+	        	var x=$scope.newPayment;
+	        	var sch1=updateSeries(x.name,x)
+	        	if(TOTAL.values.length==0)TOTAL.values=[sch1[0]];
+	        	var span=getSpanTotal();
+
+	        	TOTAL.values=span;
+	        	sch1=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),sch1)
+	        	$scope.data.push({
+	        		key:x.name,
+	        		values:sch1,
+	        		def:angular.extend({},x)
+	        	})
+	        	$scope.data=$scope.data.map(function(v,i){
+	        		if(v.key=="TOTAL")return v;
+	        		v.values=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),v.values)
+	        		v.values.forEach(function(d,i){
+	        			TOTAL.values[i][1]+=d[1];
+	        		})
+	        		return v;
+	        	})
+	        	$scope.newPayment={};
+	        	$apply();
+	        	console.log($scope.model,$scope.data);
+	        }*/
+
+	        $scope.addPayment=function(){
+	        	var x=$scope.newPayment;
+	        	x.interest=x.interest/100
+	        	$scope.model[x.name]=angular.extend({},x);
+	        	var monthlyPayment=x.monthlyPayment;
+	        	switch(x.type){
+	        		case "PAYMENT":
+	        		break;
+	        		case "LOAN":
+						var sm=x.startDate.getFullYear()*12+x.startDate.getMonth();
+						var em=x.endDate.getFullYear()*12+x.endDate.getMonth();
+	        			monthlyPayment=scheduledPayment.loanPayment({months:em-sm,sum:x.sum,interest:x.interest})
+	        		break;
+	        	}
+	        	var sch1=scheduledPayment.getSchedule(x.startDate,x.endDate,monthlyPayment);
+	        	console.log("sch1",sch1);
+	        	if(TOTAL.values.length==0)TOTAL.values=[sch1[0]];
+	        	TOTAL.values=scheduledPayment.max(TOTAL.values,sch1);
+	        	sch1=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),sch1)
+	        	$scope.data.push({
+	        		key:x.name,
+	        		values:sch1
+	        	})
+	        	$scope.data=$scope.data.map(function(v,i){
+	        		if(v.key=="TOTAL")return v;
+	        		v.values=scheduledPayment.fill(scheduledPayment.max(TOTAL.values,TOTAL.values),v.values)
+	        		v.values.forEach(function(d,i){
+	        			TOTAL.values[i][1]+=d[1];
+	        		})
+	        		return v;
+	        	})
+	        	$scope.newPayment={};
+	        	$apply();
+	        	console.log($scope.model,$scope.data);
+	        }
+
+	        function updateSeries(name,def){
+	        	var x=def;
+	        	$scope.model[x.name]=angular.extend({},x);
+	        	var monthlyPayment=x.monthlyPayment;
+	        	switch(x.type){
+	        		case "PAYMENT":
+	        		break;
+	        		case "LOAN":
+						var sm=x.startDate.getFullYear()*12+x.startDate.getMonth();
+						var em=x.endDate.getFullYear()*12+x.endDate.getMonth();
+	        			monthlyPayment=scheduledPayment.loanPayment({months:em-sm,sum:x.sum,interest:x.interest})
+	        		break;
+	        	}
+	        	var sch1=scheduledPayment.getSchedule(x.startDate,x.endDate,monthlyPayment);
+	        	console.log("sch1",sch1);
+	        	return sch1;
+	        }
+	        function getSpanTotal(){
+	        	var x=$scope.data.reduce(function(ac,series,i,d){
+	        		if(series.name=="TOTAL")return ac;
+	        		ac.min=Math.min(ac.min,series.def.startDate);
+	        		ac.max=Math.max(ac.max,series.def.endDate);
+	        		return ac;
+	        	},{min:Infinity,max:-Infinity})
+	        	return scheduledPayment.getSchedule(new Date(x.min),new Date(x.max),0);
+	        }
+	        $scope.changed=function(name,def){
+	        	console.log(name,def);
+	        }
+		    $scope.data = [
+		    	TOTAL
+		    ];
+			function $apply(){
+				$timeout(function(){$scope.$apply();})
+			}
+		})
+	</script>
+</head>
+<body ng-app="xpenses">
+	<div ng-controller="mainController as _main" ng-drop-file="_main.dropFiles($event,$data)" ng-key="_main.keyPress($type,$stream)">
+		<h4>{{appData.name}} / version {{appData.ver}}</h4>
+		<nvd3 options="options" data="data"></nvd3>
+		<div>
+			name:<input type="text" ng-model="newPayment.name">&nbsp;|&nbsp;
+			startDate:<input type="month" ng-model="newPayment.startDate">&nbsp;|&nbsp;
+			endDate:<input type="month" ng-model="newPayment.endDate">&nbsp;|&nbsp;
+			type:<select ng-model="newPayment.type">
+				<option value="PAYMENT">PAYMENT</option>
+				<option value="LOAN">LOAN</option>
+			</select>&nbsp;|&nbsp;
+			monthlyPayment:<input class="short-input" type="number" ng-model="newPayment.monthlyPayment" ng-show="newPayment.type=='PAYMENT'">&nbsp;|&nbsp;
+			sum:<input class="short-input" type="number" ng-model="newPayment.sum" ng-show="newPayment.type=='LOAN'">&nbsp;|&nbsp;
+			interest:<input class="short-input" type="number" ng-model="newPayment.interest" ng-show="newPayment.type=='LOAN'">&nbsp;|&nbsp;
+			
+			<button ng-click="addPayment()">ADD</button>
+		</div>
+		<hr>
+		<div ng-repeat="(name,params) in model">
+			name:<input type="text" ng-model="params.name" ng-change="changed(name,params)">&nbsp;|&nbsp;
+			startDate:<input type="month" ng-model="params.startDate" ng-change="changed(name,params)">&nbsp;|&nbsp;
+			endDate:<input type="month" ng-model="params.endDate" ng-change="changed(name,params)">&nbsp;|&nbsp;
+			type:<select ng-model="params.type" ng-change="changed(name,params)">
+				<option value="PAYMENT">PAYMENT</option>
+				<option value="LOAN">LOAN</option>
+			</select>&nbsp;|&nbsp;
+			monthlyPayment:<input class="short-input" type="number" ng-model="params.monthlyPayment" ng-show="params.type=='PAYMENT'" ng-change="changed(name,params)">&nbsp;|&nbsp;
+			sum:<input class="short-input" type="number" ng-model="params.sum" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">&nbsp;|&nbsp;
+			interest:<input class="short-input" type="number" ng-model="params.interest" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">&nbsp;|&nbsp;
+			
+		</div>
+	</div>
+</body>
+</html>

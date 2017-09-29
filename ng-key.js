@@ -13,7 +13,7 @@ function NgKeyDirective($parse,$rootScope){
 				element.on("keydown",function keyup(event){
 					var eventStr=eventStream(event);
 					//debug(eventStr)
-					fn({$type:event.type,$stream:eventStr})
+					fn(scope,{$type:event.type,$stream:eventStr})
 					//console.log(eventStr,fn,fn(scope,{$type:event.type,$stream:eventStr}));
 
 					//$rootScope.$broadcast("$key",{$type:event.type,$stream:eventStr,element:element});

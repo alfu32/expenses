@@ -1,0 +1,95 @@
+﻿{
+  "EXP(CAR+HOUSE+TC)": {
+    "name": "EXP(CAR+HOUSE+TC)",
+    "startDate": "2017-12-31T23:00:00.000Z",
+    "endDate": "2051-12-31T23:00:00.000Z",
+    "type": "PAYMENT",
+    "sum": 224400,
+    "interest": 0,
+    "monthlyPayment": 550,
+    "ignore": true
+  },
+  "HOUSE": {
+    "name": "HOUSE",
+    "startDate": "2017-12-31T23:00:00.000Z",
+    "endDate": "2041-12-31T23:00:00.000Z",
+    "type": "LOAN",
+    "sum": 480000,
+    "interest": 2.89,
+    "monthlyPayment": 2303.6408438738044
+  },
+  "CAR": {
+    "name": "CAR",
+    "startDate": "2014-01-31T23:00:00.000Z",
+    "endDate": "2019-01-31T23:00:00.000Z",
+    "type": "LOAN",
+    "sum": 26000,
+    "interest": 2,
+    "monthlyPayment": 455.51588777254767
+  },
+  "MOVE-2014": {
+    "name": "MOVE-2014",
+    "startDate": "2014-11-30T23:00:00.000Z",
+    "endDate": "2018-11-30T23:00:00.000Z",
+    "type": "LOAN",
+    "sum": 8000,
+    "interest": 8,
+    "monthlyPayment": 194.25675466937497
+  },
+  "ASRD": {
+    "name": "ASRD",
+    "startDate": "2017-12-31T23:00:00.000Z",
+    "endDate": "2033-12-31T23:00:00.000Z",
+    "type": "PAYMENT",
+    "monthlyPayment": 110,
+    "interest": 0,
+    "sum": 21120
+  },
+  "HOUSE-TAX": {
+    "name": "HOUSE-TAX",
+    "startDate": "2017-12-31T23:00:00.000Z",
+    "endDate": "2025-12-31T23:00:00.000Z",
+    "type": "LOAN",
+    "monthlyPayment": 265.9088496927956,
+    "sum": 19000,
+    "interest": 8
+  },
+  "MOVE-2018": {
+    "name": "MOVE-2018",
+    "startDate": "2017-12-31T23:00:00.000Z",
+    "endDate": "2018-01-31T23:00:00.000Z",
+    "type": "PAYMENT",
+    "monthlyPayment": 1500,
+    "interest": 0,
+    "sum": 1500
+  },
+  "RENOVATION": {
+    "name": "RENOVATION",
+    "startDate": "2017-12-31T23:00:00.000Z",
+    "endDate": "2018-01-31T23:00:00.000Z",
+    "type": "PAYMENT",
+    "monthlyPayment": 1000,
+    "interest": 0,
+    "sum": 1000
+  },
+  "DUMMY": {
+    "name": "DUMMY",
+    "startDate": "2013-12-31T23:00:00.000Z",
+    "endDate": "2033-11-30T23:00:00.000Z",
+    "type": "PAYMENT",
+    "interest": 0,
+    "sum": 1577400,
+    "monthlyPayment": 6600,
+    "ignore": true
+  },
+  "DUMMY2": {
+    "name": "DUMMY2",
+    "startDate": "2033-11-30T23:00:00.000Z",
+    "endDate": "2042-12-31T23:00:00.000Z",
+    "type": "PAYMENT",
+    "interest": 0,
+    "sum": 817500,
+    "monthlyPayment": 7500,
+    "ignore": true
+  }
+}

@@ -8,7 +8,7 @@
 			width:6em;
 		}
 		table.spreadsheet {
-		  border-collapse: collapse;
+			border-collapse: collapse;
 		}
 		.spreadsheet input,.spreadsheet select{
 			border:0;margin:0;outline:0;
@@ -39,250 +39,240 @@
 	<script src="bower_components/nvd3/build/nv.d3.js"></script>
 	<script src="bower_components/angular-nvd3/dist/angular-nvd3.js"></script>
 	<script>
+		function msToDate(ms){
+			return 5
+		}
 		angular.module("xpenses",["nvd3","ng-drag-drop","ng-key"])
-		.factory("scheduledPayment",function(){
-			return {
-				getSchedule:_get,
-				loanPayment:_loanMonthlyPayment,
-				fill: _fill,
-				add: _add
-			}
-			function _loanMonthlyPayment(parms){
-				var monthlyInterest=Math.pow(1+parms.interest/100,1/12)-1;
-				//console.log("_loanMonthlyPayment",parms,monthlyInterest);
-
-				return parms.sum*monthlyInterest/(1 - 1/Math.pow(1+monthlyInterest,parms.months))
-			}
-			function _get(startDate,endDate,value){
-				var sm=startDate.getFullYear()*12+startDate.getMonth();
-				var em=endDate.getFullYear()*12+endDate.getMonth();
-				//console.log(sm,em,value);
-				return new Array(em-sm)
-					.fill(value)
-					.map(function(v,i,a){
-						var d=new Date(startDate.getFullYear(),i)
-						return [d,v]
-					})
-			}
-			function _fill(sch1,sch2){
-				var startD=sch2[0][0];
-				var endD=sch2[sch2.length-1][0];
-				var iof=0;
-				return sch1.map(function(v,i,a){
-					if(v[0]>=startD && v[0]<=endD){
-						v[1]=sch2[iof][1];
-						iof++;
-					}
-					return v;
-				})
-			}
-			function _add(sch1,sch2){
-				var startD=sch2[0][0];
-				var endD=sch2[sch2.length-1][0];
-				var iof=0;
-				return sch1.map(function(v,i,a){
-					if(v[0]>=startD && v[0]<=endD){
-						v[1]+=sch2[iof][1];
-						iof++;
-					}
-					return v;
-				})
+		.filter("toFixed",function(){
+			return function(input, digits){
+				return input.toFixed(digits||2)
 			}
 		})
-		.controller("mainController",function MainController($scope,$timeout,$http,scheduledPayment){
+		.factory("loans",function(){
+			return {
+				monthlyPayment:_monthlyPayment
+			}
+			function _monthlyPayment(parms){
+				var monthlyInterest=Math.pow(1+parms.interest/100,1/12)-1;
+				return parms.sum*monthlyInterest/(1 - 1/Math.pow(1+monthlyInterest,parms.months))
+			}
+		})
+		.controller("mainController",function MainController($scope,$timeout,$http,loans){
 			var _main=this;
+			var TOTAL={key:"TOTAL",values:[],def:{name:"TOTAL"},area: true};
+
 			$scope.appData={
 				ver:"1.0.0",
 				name:"expenses"
 			}
 			$scope.model={}
 			$scope.options = {
-        chart: {
-            type: 'lineChart',
-            height: 450,
-            margin : {
-                top: 20,
-                right: 20,
-                bottom: 60,
-                left: 65
-            },
-            padding : {
-                top: 20,
-                right: 20,
-                bottom: 20,
-                left: 20
-            },
-            x: function(d){ return d[0]; },
-            y: function(d){ return d[1]; },
-            average: function(d) { return d.mean; },
+				chart: {
+					type: 'lineChart',
+					height: 450,
+					margin : {
+							top: 20,
+							right: 20,
+							bottom: 60,
+							left: 65
+					},
+					padding : {
+							top: 20,
+							right: 20,
+							bottom: 20,
+							left: 20
+					},
+					x: function(d){ return d[0]; },
+					y: function(d){ return d[1]; },
+					average: function(d) { return d.mean; },
 
-            color: d3.scale.category10().range(),
-            duration: 300,
-            useInteractiveGuideline: true,
-            clipVoronoi: false,
+					color: d3.scale.category10().range(),
+					duration: 300,
+					useInteractiveGuideline: true,
+					clipVoronoi: false,
 
-            xAxis: {
-                axisLabel: 'X Axis',
-                tickFormat: function(d) {
-                    return d3.time.format('%m/%y')(new Date(d))
-                },
-                showMaxMin: false,
-                staggerLabels: true
-            },
+					xAxis: {
+							axisLabel: 'X Axis',
+							tickFormat: function(d) {
+									return d3.time.format('%m/%y')(new Date(d))
+							},
+							showMaxMin: false,
+							staggerLabels: true
+					},
 
-            yAxis: {
-                axisLabel: 'Y Axis',
-                tickFormat: function(d){
-                    return d3.format('.2f')(d);
-                },
-                axisLabelDistance: 20
-            }
-        }
-    };
-    $scope.$on("$drop",function(ev,data){
-    	console.log("drop",ev,data)
-    })
-    _main.keyPress=function($type,$stream){
-    	console.log("$key",$stream);
-			switch($stream){
-				case "ctrl-shift-S":
-					var mod=Object.keys($scope.model).reduce(function(ac,k){
-						var e=angular.extend({},$scope.model[k])
-						delete e.$$hashKey;
-						ac[e.name]=e;
-						return ac;
-					},{});
-					var pl=JSON.stringify($scope.model,null,2)
-					var blob = new Blob([pl], {type: "text/plain;charset=utf-8"});
-					saveAs(blob,"projection-model.json");
-				break;
-				case "ctrl-shift-S":
+					yAxis: {
+							axisLabel: 'Y Axis',
+							tickFormat: function(d){
+									return d3.format('.2f')(d);
+							},
+							axisLabelDistance: 20
+					}
+				}
+			};
+			$scope.newPayment={};
+			$scope.normalizeModel=normalizeModel;
+			$scope.data = [TOTAL];
 
-				break;
+			_main.keyPress=function($type,$stream){
+				console.log("$key",$stream);
+				switch($stream){
+					case "ctrl-shift-S":
+						var mod=Object.keys($scope.model).reduce(function(ac,k){
+							var e=angular.extend({},$scope.model[k])
+							delete e.$$hashKey;
+							ac[e.name]=e;
+							return ac;
+						},{});
+						var pl=JSON.stringify($scope.model,null,2)
+						var blob = new Blob([pl], {type: "text/plain;charset=utf-8"});
+						saveAs(blob,"projection-model.json");
+					break;
+					case "ctrl-shift-S":
+
+					break;
+				}
 			}
-    }
-        _main.dropFiles=function($event,$files){
-        	//console.log("dropFiles",$event,$files);
-        	var x=JSON.parse($files[0].content);
-        	console.log(x);
-        	$scope.model=Object.keys(x).reduce(function(ac,k){
-        		v=x[k]
-        		v.startDate=new Date(v.startDate)
-        		v.endDate=new Date(v.endDate);
-        		ac[v.name]=v;
-        		return ac;
-        	},{})
-        	update();
-        	$apply();
-        }
-        $scope.newPayment={};
-        var TOTAL={key:"TOTAL",values:[],def:{name:"TOTAL"},area: true};
-        function normalizeModel(def){
-						var sm=def.startDate.getFullYear()*12+def.startDate.getMonth();
-						var em=def.endDate.getFullYear()*12+def.endDate.getMonth();
-	        	switch(def.type){
-	        		case "PAYMENT":
-	        			def.interest=0
-	        			def.sum=(em-sm)*def.monthlyPayment;
-	        		break;
-	        		case "LOAN":
-	        			def.monthlyPayment=scheduledPayment.loanPayment({months:em-sm,sum:def.sum,interest:def.interest})
-	        		break;
-	        	}
-	        	//console.log(def);
-	        	return def;
-        }
-        $scope.normalizeModel=normalizeModel;
-	    $scope.data = [TOTAL];
+			_main.dropFiles=function($event,$files){
+				//console.log("dropFiles",$event,$files);
+				var x=JSON.parse($files[0].content);
+				console.log(x);
+				$scope.model=Object.keys(x).reduce(function(ac,k){
+					v=x[k]
+					v.startDate=new Date(v.startDate)
+					v.endDate=new Date(v.endDate);
+					ac[v.name]=v;
+					return ac;
+				},{})
+				update();
+				$apply();
+			}
+			function normalizeModel(def){
+				var sm=def.startDate.getFullYear()*12+def.startDate.getMonth();
+				var em=def.endDate.getFullYear()*12+def.endDate.getMonth();
+				switch(def.type){
+					case "PAYMENT":
+						def.interest=0
+						def.sum=(em-sm)*def.monthlyPayment;
+					break;
+					case "LOAN":
+						def.monthlyPayment=loans.monthlyPayment({months:em-sm,sum:def.sum,interest:def.interest})
+					break;
+				}
+				//console.log(def);
+				return def;
+			}
+			function getTotalValue(date){
+				var sum=Object.keys($scope.model)
+					.reduce(function(ac,k){
+						if(k=="TOTAL")return ac;
+						var def=$scope.model[k];
+						ac+=def.getValue(date);
+						return ac;
+					},0);
+					return sum;
+			}
+			function update(){
+				var span=getSpanTotal();
+				var ts = new Date(span.startDate),
+				te = new Date(span.endDate);
 
-        function update(){
-        	var span=getSpanTotal();
-        	TOTAL.values=scheduledPayment.getSchedule(new Date(span.startDate),new Date(span.endDate),0);
+				TOTAL.values=[
+					[ new Date(span.startDate),0,1],
+					[ new Date(span.endDate),0,-1]
+				];
+				var tt={};
+				tt[ts.getTime()]=0;
+				tt[te.getTime()]=0;
 
-        	$scope.data=[TOTAL];
-        	var points={};
-        	Object.keys($scope.model)
-        	.forEach(function(k){
-        		var def=normalizeModel($scope.model[k]);
-        		$scope.model[k]=def;
+	 			$scope.data = [TOTAL];
+				Object.keys($scope.model)
+				.forEach(function(k){
+					var def=normalizeModel($scope.model[k]);
+					$scope.model[k]=def;
+					var cs = new Date(def.startDate)
+					,ce = new Date(def.endDate);
+					def.variation=(def.paymentPlan=="GROWING")?(def.monthlyPayment/5):0;
+					var startValue=def.monthlyPayment-def.variation,endValue=def.monthlyPayment+def.variation
+					var schedule=[
+						[ts,0],
+						[cs,0],
+						[cs,startValue],
+						[ce,endValue],
+						[ce,0],
+						[te,0]
+					];
+					def.getValue=function(date){
+						if(date.getTime()<cs.getTime() || date.getTime()>ce.getTime() )return 0;
+						else return startValue+(startValue-endValue)/(ce.getTime()-cs.getTime()+0.001)*(cs.getTime()-date.getTime())
+					}
 
-	        	var schedule=scheduledPayment.fill(
-	        		scheduledPayment.getSchedule(new Date(span.startDate),new Date(span.endDate),0),
-	        		scheduledPayment.getSchedule(def.startDate,def.endDate,def.monthlyPayment)
-	        	);
-	        	//if(!def.ignore){
-	        		schedule.forEach(function(d){
-		        		TOTAL.values.forEach(function(t){
-		        			if((t[0]-d[0])===0){
-		        				if(!def.ignore)t[1]+=d[1];
-		        				points[ d[0].getTime() ]=d[0];
-		        			}
-		        		})
-		        	});
-	        	//}
-	        	$scope.data.push({
-	        		key:def.name,
-	        		values:schedule
-	        	})
-        	});
-        	console.log(points);
-        	/*var opt=$scope.data.map(function(g){
-        		g.values=g.values.reduce(function(a,p,i,ar){
-        			if(points[p[0].getTime()]==p[0] || i==0 || (i==(ar.length-1) ) )ar.push(p);
-        			return a;
-        		},[])
-        		return g;
-        	})
-        	console.log(opt)*/
-        	$apply();
-        }
+					if(!def.ignore){
+						tt[cs.getTime()]=true;
+						tt[ce.getTime()]=true;
+					}
 
-        $scope.addPayment=function(){
-        	var x=$scope.newPayment;
-        	$scope.model[x.name]=angular.extend({},x);
-        	update()
-        	$scope.newPayment={};
-        	$apply();
-        }
+					$scope.data.push({
+						key:def.name,
+						values:schedule
+					})
+				});
 
-        function updateSeries(def){
-        	var x=def;
-        	$scope.model[def.name]=angular.extend({},def);
-        }
-        function getSpanTotal(){
-        	var x=Object.keys($scope.model)
-        	.reduce(function(ac,k){
-        		var def=$scope.model[k];
-        		if(def.name=="TOTAL")return ac;
-        		ac.startDate=Math.min(ac.startDate,def.startDate);
-        		ac.endDate=Math.max(ac.endDate,def.endDate);
-        		return ac;
+				TOTAL.values=Object.keys(tt)
+				.sort()
+				.reduce(function(a,v,i,ar){
+					var d=new Date(parseInt(v)),d1=new Date(parseInt(v)-1),d2=new Date(parseInt(v)+1)
+					a.push([ d , getTotalValue( d1 ) ])
+					a.push([ d , getTotalValue( d2 ) ])
+					return a;
+				},[])
+				console.log(TOTAL.values)
+				$apply();
+			}
+			$scope.addPayment=function(){
+				var x=$scope.newPayment;
+				$scope.model[x.name]=angular.extend({},x);
+				update()
+				$scope.newPayment={};
+				$apply();
+			}
+			function updateSeries(def){
+				var x=def;
+				$scope.model[def.name]=angular.extend({},def);
+			}
+			function getSpanTotal(){
+				var x=Object.keys($scope.model)
+				.reduce(function(ac,k){
+					var def=$scope.model[k];
+					if(def.name=="TOTAL")return ac;
+					ac.startDate=Math.min(ac.startDate,def.startDate);
+					ac.endDate=Math.max(ac.endDate,def.endDate);
+					return ac;
 
-        	},{startDate:Infinity,endDate:-Infinity});
-        	return x;
-        }
-        $scope.changed=function(name,def){
-        	$scope.model[name]=angular.extend({},def);
-        	//console.log(name,def);
-        	throttle(function(){
-        		update();
-        		$apply();
-        	},500);
-        	//
-        }
-        $scope.deleteLine=function(name){
-        	delete $scope.model[name];
-        	throttle(function(){
-        		update();
-        		$apply();
-        	},500);
-        	//
-        }
-	    var st=0;
-	    function throttle(fn,t){
-	    	clearTimeout(st);
-	    	st=setTimeout(fn,t)
-	    }
+				},{startDate:Infinity,endDate:-Infinity});
+				return x;
+			}
+			$scope.changed=function(name,def){
+				$scope.model[name]=angular.extend({},def);
+				//console.log(name,def);
+				throttle(function(){
+					update();
+					$apply();
+				},500);
+				//
+			}
+			$scope.deleteLine=function(name){
+				delete $scope.model[name];
+				throttle(function(){
+					update();
+					$apply();
+				},500);
+				//
+			}
+			var st=0;
+			function throttle(fn,t){
+				clearTimeout(st);
+				st=setTimeout(fn,t)
+			}
 			function $apply(){
 				$timeout(function(){$scope.$apply();})
 			}
@@ -313,19 +303,19 @@
 					<td><input type="month" ng-model="params.startDate" ng-change="changed(name,params)"></td>
 					<td><input type="month" ng-model="params.endDate" ng-change="changed(name,params)"></td>
 					<td><select ng-model="params.type" ng-change="changed(name,params)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select></td>
-					<td><select ng-model="params.paymentPlan" ng-change="changed(name,params)"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option></select></td>
-					<td><select ng-model="params.interestVariationPlan" ng-change="changed(name,params)"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select></td>
+					<td><select ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option></select></td>
+					<td><select ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select></td>
 					<td>
 						<input class="short-input" type="number" ng-model="params.monthlyPayment" ng-show="params.type=='PAYMENT'" ng-change="changed(name,params)">
-						<div class="grey-feedback" ng-show="params.type=='LOAN'">{{params.monthlyPayment}}</div>
+						<div class="grey-feedback" ng-show="params.type=='LOAN'">{{params.monthlyPayment | toFixed : 2}}</div>
 					</td>
 					<td>
 						<input type="number" ng-model="params.sum" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">
-						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.sum}}</div>
+						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.sum | toFixed : 2}}</div>
 					</td>
 					<td>
 						<input class="short-input" type="number" ng-model="params.interest" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">
-						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.interest}}</div>
+						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.interest | toFixed : 2}}</div>
 					</td>
 					<td>ignore<input type="checkbox" ng-model="params.ignore" ng-change="changed(name,params)"><button ng-click="deleteLine(name)">DEL</button></td>
 				</tr>
@@ -334,8 +324,8 @@
 					<td><input type="month" ng-model="newPayment.startDate" ng-change="normalizeModel(newPayment)"></td>
 					<td><input type="month" ng-model="newPayment.endDate" ng-change="normalizeModel(newPayment)"></td>
 					<td><select ng-model="newPayment.type" ng-change="normalizeModel(newPayment)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select></td>
-					<td><select ng-model="params.paymentPlan" ng-change="changed(name,params)"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option></select></td>
-					<td><select ng-model="params.interestVariationPlan" ng-change="changed(name,params)"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select></td>
+					<td><select ng-model="newPayment.paymentPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option></select></td>
+					<td><select ng-model="newPayment.interestVariationPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select></td>
 					<td>
 						<input class="short-input" type="number" ng-model="newPayment.monthlyPayment" ng-show="newPayment.type=='PAYMENT'" ng-change="normalizeModel(newPayment)">
 						<div class="grey-feedback" ng-show="newPayment.type=='LOAN'">{{newPayment.monthlyPayment}}</div>

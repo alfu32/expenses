@@ -8,6 +8,9 @@ yarn-error.log*
 # saved projection definition files
 projection*.json
 
+# the thrash
+_thrash/
+
 # Runtime data
 pids
 *.pid

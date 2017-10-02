@@ -3,7 +3,7 @@ graphical representation for monthly expenses
 
 ## install
 ```
-git clone
+git clone https://github.com/alfu32/expenses.git
 cd expenses
 bower install
 ```

@@ -1,5 +1,13 @@
 # expenses
 graphical representation for monthly expenses
+Financial Tool
+ graphical projection  and aggregation of monthly costs : loans, expenses, future costs.
+
+I am using it to make analytical projections of the impact on the  family budget of loans or other future costs
+
+Taking a mortgage or a loan usually has a heavy impact on your budget, besides ... the banks will offer you capital at different interest rates(fixed, not fixed), different payment schedules (flat or growing) and different loan length. When shopping for a loan with severeal different banks, making an estimation of the impact on your budget (if you can really afford it on a long term ... ) tends to be tricky .
+
+I tried first using excel, graphical projection are limited, one does not have much controll when it comes to aggregating data. 
 
 ## install
 ```

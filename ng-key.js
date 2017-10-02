@@ -9,7 +9,23 @@ function NgKeyDirective($parse,$rootScope){
 		compile:function(te,ta){
 			return function (scope,element,attr){
 				var fn=$parse(attr.ngKey,null,true)
-				element.on("mouseover",function(event){element[0].focus()})
+				element.attr( "tabindex",1)
+				var outline;
+				element.on("focus blur",function(event){
+					event.preventDefault();
+					event.stopPropagation();
+				})
+				element.on("mouseover",function(event){
+					outline=element[0].style.outline;
+					element[0].style.outline=0;
+					element.addClass("focus")
+					element[0].focus();
+				})
+				element.on("mouseout",function(event){
+					element[0].style.outline=outline;
+					element.removeClass("focus")
+					element[0].blur();
+				})
 				element.on("keydown",function keyup(event){
 					var eventStr=eventStream(event);
 					//debug(eventStr)

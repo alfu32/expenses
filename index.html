@@ -29,6 +29,9 @@
 			font-size: 10px;
 			color:#555;
 		}
+		.focused{
+			border:1px solid #F33;
+		}
 	</style>
 	<script src="bower_components/angular/angular.js"></script>
 	<script src="bower_components/d3/d3.js"></script>
@@ -78,8 +81,8 @@
 							bottom: 20,
 							left: 20
 					},
-					x: function(d){ return d[0]; },
-					y: function(d){ return d[1]; },
+					x: function(d){ return (d&&d[0])||0; },
+					y: function(d){ return (d&&d[1])||0; },
 					average: function(d) { return d.mean; },
 
 					color: d3.scale.category10().range(),
@@ -102,7 +105,19 @@
 									return d3.format('.2f')(d);
 							},
 							axisLabelDistance: 20
-					}
+					}/*,
+			    "zoom": {
+			      "enabled": true,
+			      "scaleExtent": [
+			        1,
+			        10
+			      ],
+			      "useFixedDomain": true,
+			      "useNiceScale": false,
+			      "horizontalOff": false,
+			      "verticalOff": true,
+			      "unzoomEventType": "dblclick.zoom"
+			    }*/
 				}
 			};
 			$scope.newPayment={};
@@ -198,14 +213,12 @@
 						[te,0]
 					];
 					def.getValue=function(date){
-						if(date.getTime()<cs.getTime() || date.getTime()>ce.getTime() )return 0;
+						if(date.getTime()<cs.getTime() || date.getTime()>ce.getTime() || def.ignore )return 0;
 						else return startValue+(startValue-endValue)/(ce.getTime()-cs.getTime()+0.001)*(cs.getTime()-date.getTime())
 					}
 
-					if(!def.ignore){
-						tt[cs.getTime()]=true;
-						tt[ce.getTime()]=true;
-					}
+					tt[cs.getTime()]=true;
+					tt[ce.getTime()]=true;
 
 					$scope.data.push({
 						key:def.name,

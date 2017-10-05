@@ -202,7 +202,7 @@
 					$scope.model[k]=def;
 					var cs = new Date(def.startDate)
 					,ce = new Date(def.endDate);
-					def.variation=(def.paymentPlan=="GROWING")?(def.monthlyPayment/5):0;
+					def.variation=(def.paymentPlan=="GROWING")?(def.monthlyPayment/5):(def.paymentPlan=="DESCENDING")?(-def.monthlyPayment/5):0;
 					var startValue=def.monthlyPayment-def.variation,endValue=def.monthlyPayment+def.variation
 					var schedule=[
 						[ts,0],
@@ -300,8 +300,6 @@
 					<th>startDate</th>
 					<th>endDate</th>
 					<th>type</th>
-					<th>paymentPlan</th>
-					<th>interestVar</th>
 					<th>monthly</th>
 					<th>total</th>
 					<th>interest</th>
@@ -311,9 +309,11 @@
 					<td><input type="text" ng-model="params.name" ng-change="changed(name,params)"></td>
 					<td><input type="month" ng-model="params.startDate" ng-change="changed(name,params)"></td>
 					<td><input type="month" ng-model="params.endDate" ng-change="changed(name,params)"></td>
-					<td><select ng-model="params.type" ng-change="changed(name,params)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select></td>
-					<td><select ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option></select></td>
-					<td><select ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select></td>
+					<td>
+						<select ng-model="params.type" ng-change="changed(name,params)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select><br ng-show="params.type=='LOAN'"/>
+						<select ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option><option value="DESCENDING">DESCENDING</option></select><br ng-show="params.type=='LOAN'"/>
+						<select ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select>
+					</td>
 					<td>
 						<input class="short-input" type="number" ng-model="params.monthlyPayment" ng-show="params.type=='PAYMENT'" ng-change="changed(name,params)">
 						<div class="grey-feedback" ng-show="params.type=='LOAN'">{{params.monthlyPayment | toFixed : 2}}</div>
@@ -332,9 +332,11 @@
 					<td><input type="text" ng-model="newPayment.name"></td>
 					<td><input type="month" ng-model="newPayment.startDate" ng-change="normalizeModel(newPayment)"></td>
 					<td><input type="month" ng-model="newPayment.endDate" ng-change="normalizeModel(newPayment)"></td>
-					<td><select ng-model="newPayment.type" ng-change="normalizeModel(newPayment)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select></td>
-					<td><select ng-model="newPayment.paymentPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option></select></td>
-					<td><select ng-model="newPayment.interestVariationPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select></td>
+					<td>
+						<select ng-model="newPayment.type" ng-change="normalizeModel(newPayment)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select><br ng-show="newPayment.type=='LOAN'"/>
+						<select ng-model="newPayment.paymentPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option><option value="DESCENDING">DESCENDING</option></select><br ng-show="newPayment.type=='LOAN'"/>
+						<select ng-model="newPayment.interestVariationPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select>
+					</td>
 					<td>
 						<input class="short-input" type="number" ng-model="newPayment.monthlyPayment" ng-show="newPayment.type=='PAYMENT'" ng-change="normalizeModel(newPayment)">
 						<div class="grey-feedback" ng-show="newPayment.type=='LOAN'">{{newPayment.monthlyPayment}}</div>

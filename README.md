@@ -42,3 +42,5 @@ save model       : `ctrl-shit-s`
 
 load saved model : drag the json file from an explorer window and drop it into the page
 
+## license
+	(ISC) free to use redistribute modify for any purpose.

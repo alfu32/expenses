@@ -1,9 +1,9 @@
 angular.module("ng-key",[])
 .directive("ngKey",NgKeyDirective)
 
-NgKeyDirective.$inject="$parse,$rootScope".split(",");
+NgKeyDirective.$inject="$parse,$rootScope,$timeout".split(",");
 
-function NgKeyDirective($parse,$rootScope){
+function NgKeyDirective($parse,$rootScope,$timeout){
 	return {
 		restrict:"A",
 		compile:function(te,ta){
@@ -11,29 +11,19 @@ function NgKeyDirective($parse,$rootScope){
 				var fn=$parse(attr.ngKey,null,true)
 				element.attr( "tabindex",1)
 				var outline;
-				element.on("focus blur",function(event){
-					event.preventDefault();
-					event.stopPropagation();
+				element.on("mouseover",mouseover)
+				element.on("keydown",function keyup(event){
+					var eventStr=eventStream(event);
+					fn(scope,{$type:event.type,$stream:eventStr})
 				})
-				element.on("mouseover",function(event){
+
+				function mouseover(event){
 					outline=element[0].style.outline;
 					element[0].style.outline=0;
 					element.addClass("focus")
 					element[0].focus();
-				})
-				element.on("mouseout",function(event){
-					element[0].style.outline=outline;
-					element.removeClass("focus")
-					element[0].blur();
-				})
-				element.on("keydown",function keyup(event){
-					var eventStr=eventStream(event);
-					//debug(eventStr)
-					fn(scope,{$type:event.type,$stream:eventStr})
-					//console.log(eventStr,fn,fn(scope,{$type:event.type,$stream:eventStr}));
-
-					//$rootScope.$broadcast("$key",{$type:event.type,$stream:eventStr,element:element});
-				})
+					element.off("mouseover",mouseover);
+				}
 			}
 		}
 	}

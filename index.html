@@ -7,18 +7,32 @@
 		.short-input{
 			width:6em;
 		}
+		.two-digit-input{
+			width:3em;
+		}
+		.one-digit-input{
+			width:2em;
+		}
 		table.spreadsheet {
 			border-collapse: collapse;
 		}
 		.spreadsheet input,.spreadsheet select{
+			box-sizing: border-box;
 			border:0;margin:0;outline:0;
 			background:0;
+			border-bottom: 1px solid #999;
+			height: 24px;
 		}
 		.spreadsheet>tbody,.spreadsheet>tbody>tr,.spreadsheet>tbody>tr>th{
 			margin:0;outline:0;padding:2px;
+			vertical-align:top;
 		}
 		.spreadsheet>tbody>tr{
-			border-bottom:1px solid #999;
+			border-bottom:1px solid #333;
+		}
+		.spreadsheet>tbody>tr:hover{
+			border-bottom:1px solid #000;
+			background:#CCC;
 		}
 		.spreadsheet>tbody>tr.new-item{
 			border-top:1px solid #999;
@@ -44,7 +58,9 @@
 		angular.module("xpenses",["nvd3","ng-drag-drop","ng-key"])
 		.filter("toFixed",function(){
 			return function(input, digits){
-				return input.toFixed(digits||2)
+				if(input && input.toFixed)
+					return input.toFixed(digits||2);
+				else return 0;
 			}
 		})
 		.factory("loans",function(){
@@ -59,12 +75,15 @@
 		.controller("mainController",function MainController($scope,$timeout,$http,loans){
 			var _main=this;
 			var TOTAL={key:"TOTAL",values:[],def:{name:"TOTAL"},area: true};
-
+			$scope.k={
+				PAYMENT_TYPE:'PAYMENT,LOAN',
+				RATE_TYPE:'FIX,VARIABLE',
+				REIMBURSEMENT_TYPE:'FLAT,LINEAR'
+			}
 			$scope.appData={
 				ver:"1.0.0",
 				name:"expenses"
 			}
-			$scope.model={}
 			$scope.options = {
 				chart: {
 					type: 'lineChart',
@@ -120,15 +139,22 @@
 			    }*/
 				}
 			};
-			$scope.newPayment={};
+			$scope.model={NEW:normalizeModel({})}
 			$scope.normalizeModel=normalizeModel;
 			$scope.data = [TOTAL];
+			_main.cycle=function(s,d,n,values){
+				d=normalizeModel(d);
+				var v=values.split(",");
+				d[n]=v[(v.indexOf(d[n])+1)%v.length];
+				$scope.changed(s,d);
+			}
 
 			_main.keyPress=function($type,$stream){
 				console.log("$key",$stream);
 				switch($stream){
 					case "ctrl-shift-S":
 						var mod=Object.keys($scope.model).reduce(function(ac,k){
+							if(k=="NEW")return ac;
 							var e=angular.extend({},$scope.model[k])
 							delete e.$$hashKey;
 							ac[e.name]=e;
@@ -153,22 +179,98 @@
 					v.endDate=new Date(v.endDate);
 					ac[v.name]=v;
 					return ac;
-				},{})
-				update();
-				$apply();
+				},{});
+				$scope.model.NEW=normalizeModel({});
+				throttle(function(){
+					update();
+					$apply();
+				},500);
 			}
-			function normalizeModel(def){
+			function normalizeModel(_def){
+				var def=_def||{};
+				def["startDate"]              =  def["startDate"]              ||  new Date();
+				def["endDate"]                =  def["endDate"]                ||  def.startDate;
+				def["monthlyPayment"]         =  def["monthlyPayment"]         ||  0;
+				def["interest"]               =  def["interest"]               ||  0;
+				def["type"]                   =  def["type"]                   ||  "PAYMENT";
+				def["paymentPlan"]            =  def["paymentPlan"]            ||  "FLAT";
+				def["paymentPlanVariation"]   =  def["paymentPlanVariation"]   ||  0;
+				def["interestVariationPlan"]  =  def["interestVariationPlan"]  ||  "FIX";
+				def["interestVariationFirst"] =  def["interestVariationFirst"] ||  5;
+				def["interestVariationNext"]  =  def["interestVariationNext"]  ||  5;
+				def["interestVariationCap"]   =  def["interestVariationCap"]   ||  parseInt(def.interest*2);
+				def.defaultName               =  def.startDate.toString().substr(4,3)+"-"+def.startDate.getFullYear()+" "+def.endDate.toString().substr(4,3)+"-"+def.endDate.getFullYear()
+				
+
 				var sm=def.startDate.getFullYear()*12+def.startDate.getMonth();
 				var em=def.endDate.getFullYear()*12+def.endDate.getMonth();
+				def.months=em-sm;
 				switch(def.type){
 					case "PAYMENT":
-						def.interest=0
 						def.sum=(em-sm)*def.monthlyPayment;
+						def.total=(em-sm)*def.monthlyPayment;
 					break;
 					case "LOAN":
 						def.monthlyPayment=loans.monthlyPayment({months:em-sm,sum:def.sum,interest:def.interest})
+						def.total=(em-sm)*def.monthlyPayment;
 					break;
 				}
+				switch(def.paymentPlan){
+					case "FLAT":
+						def.variation=0
+					break;
+					case "LINEAR":
+						def.variation=def.monthlyPayment*( (def.paymentPlanVariation)/100)
+					break;
+				}
+					var cs = new Date(def.startDate)
+					,ce = new Date(def.endDate);
+					var startValue=def.monthlyPayment-def.variation
+					var endValue=def.monthlyPayment+def.variation;
+					// def.interestVariationFirst
+					// def.interestVariationNext
+					// def.interestVariationCap
+				switch(def.interestVariationPlan){
+					case "FIX":
+						def.schedule=[
+							[cs,startValue],
+							[ce,endValue]
+						]
+						def.getValue=function(date){
+							if(date.getTime()<cs.getTime() || date.getTime()>ce.getTime() || def.ignore )return 0;
+							else return startValue+(startValue-endValue)/(ce.getTime()-cs.getTime()+0.001)*(cs.getTime()-date.getTime())
+						}
+					break;
+					case "VARIABLE":
+						var ms=new Date(cs)
+						ms.setYear(ms.getFullYear()+def.interestVariationFirst);
+						var mm=ms.getFullYear()*12+ms.getMonth()
+						var maxValue=loans.monthlyPayment({
+							months:em-mm,
+							sum:def.sum*Math.pow(1+def.interest/100,def.interestVariationFirst)-(def.interestVariationFirst*12)*def.monthlyPayment,
+							interest:def.interestVariationCap
+						})
+							def.schedule=[
+								[cs,startValue],
+								[ms,startValue],
+								[ms,maxValue],
+								[ce,maxValue]
+							]
+							def.total=(mm-sm)*startValue;
+							def.total+=(em-mm)*maxValue;
+							def.getValue=function(date){
+								return [
+									[cs,ms,startValue],
+									[ms,ce,maxValue]
+								].reduce(function(ac,v,i,a){
+									//console.log(def.name+":"+date,v,(v[0].getTime()<=date.getTime() && date.getTime()<=v[1].getTime() ))
+									if(v[0].getTime()<=date.getTime() && date.getTime()<=v[1].getTime() && !def.ignore )ac=v[2];
+									return ac;
+								},0);
+							}
+					break;
+				}
+				def.hash=def.name+sm+em;
 				//console.log(def);
 				return def;
 			}
@@ -200,30 +302,26 @@
 				.forEach(function(k){
 					var def=normalizeModel($scope.model[k]);
 					$scope.model[k]=def;
-					var cs = new Date(def.startDate)
-					,ce = new Date(def.endDate);
-					def.variation=(def.paymentPlan=="GROWING")?(def.monthlyPayment/5):(def.paymentPlan=="DESCENDING")?(-def.monthlyPayment/5):0;
-					var startValue=def.monthlyPayment-def.variation,endValue=def.monthlyPayment+def.variation
+					var cs=def.schedule[0][0]
+					var ce=def.schedule[def.schedule.length-1][0]
 					var schedule=[
-						[ts,0],
-						[cs,0],
-						[cs,startValue],
-						[ce,endValue],
-						[ce,0],
-						[te,0]
-					];
-					def.getValue=function(date){
-						if(date.getTime()<cs.getTime() || date.getTime()>ce.getTime() || def.ignore )return 0;
-						else return startValue+(startValue-endValue)/(ce.getTime()-cs.getTime()+0.001)*(cs.getTime()-date.getTime())
-					}
-
+							[ts,0],
+							[cs,0]
+						].concat(def.schedule).concat([
+							[ce,0],
+							[te,0]
+						]);
+					def.schedule.forEach(function(v){
+						tt[v[0].getTime()]=true;
+					})
 					tt[cs.getTime()]=true;
 					tt[ce.getTime()]=true;
 
 					$scope.data.push({
-						key:def.name,
+						key:def.name || def.defaultName,
 						values:schedule
 					})
+
 				});
 
 				TOTAL.values=Object.keys(tt)
@@ -238,10 +336,11 @@
 				$apply();
 			}
 			$scope.addPayment=function(){
-				var x=$scope.newPayment;
+				var x=$scope.model.NEW;
 				$scope.model[x.name]=angular.extend({},x);
+				delete $scope.model.NEW;
 				update()
-				$scope.newPayment={};
+				$scope.model.NEW=normalizeModel({});
 				$apply();
 			}
 			function updateSeries(def){
@@ -297,22 +396,47 @@
 			<tbody>
 				<tr>
 					<th>name</th>
-					<th>startDate</th>
-					<th>endDate</th>
+					<th>interval</th>
 					<th>type</th>
-					<th>monthly</th>
+					<th>installment</th>
 					<th>total</th>
-					<th>interest</th>
 					<th></th>
 				</tr>
 				<tr ng-repeat="(name,params) in model">
-					<td><input type="text" ng-model="params.name" ng-change="changed(name,params)"></td>
-					<td><input type="month" ng-model="params.startDate" ng-change="changed(name,params)"></td>
-					<td><input type="month" ng-model="params.endDate" ng-change="changed(name,params)"></td>
+					<td><input type="text" ng-model="params.name" ng-change="changed(name,params)" placeholder="{{params.defaultName}}"></td>
+					<td><input type="month" ng-model="params.startDate" ng-change="changed(name,params)"><br>
+						<input type="month" ng-model="params.endDate" ng-change="changed(name,params)"></td>
 					<td>
-						<select ng-model="params.type" ng-change="changed(name,params)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select><br ng-show="params.type=='LOAN'"/>
-						<select ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option><option value="DESCENDING">DESCENDING</option></select><br ng-show="params.type=='LOAN'"/>
-						<select ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select>
+						<div>
+							<!--select ng-model="params.type" ng-change="changed(name,params)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select-->
+							<button ng-click="_main.cycle(name,params,'type',k.PAYMENT_TYPE)">{{params.type}}</button>
+							<!--input type="radio" name="ptype" ng-checked="params.type=='PAYMENT'" ng-model="params.type" ng-change="changed(name,params)" ng-value="'PAYMENT'">fixed
+							<input type="radio" name="ptype" ng-checked="params.type=='LOAN'" ng-model="params.type" ng-change="changed(name,params)" ng-value="'LOAN'">loan-->
+							<span ng-show="params.type=='LOAN'">
+								@<input class="two-digit-input" type="number" ng-model="params.interest" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">%
+							</span>
+						</div>
+						<div ng-show="params.type=='LOAN'">
+							<!--select ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FLAT">FLAT</option><option value="LINEAR">LINEAR PAYMENT PLAN</option></select-->
+							<button ng-click="_main.cycle(name,params,'paymentPlan',k.REIMBURSEMENT_TYPE)">{{params.paymentPlan}}</button>
+							<!--input type="radio" name="ppptype" ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-value="'FLAT'">flat
+							<input type="radio" name="ppptype" ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-value="'LINEAR'">linear-->
+							<input ng-show="(params.paymentPlan=='LINEAR')" class="two-digit-input" type="number" ng-model="params.paymentPlanVariation" 
+							ng-change="changed(name,params)">
+						</div>
+						<!--div style="display:inline-block"-->
+						<!--/div-->
+						<div ng-show="params.type=='LOAN'">
+							<!--select ng-model="params.interestVariationPlan" ng-change="changed(name,params)"><option value="FIX">FIXED RATE</option><option value="VARIABLE">VARIABLE RATE</option></select-->
+							<button ng-click="_main.cycle(name,params,'interestVariationPlan',k.RATE_TYPE)">{{params.interestVariationPlan}}</button>
+							<!--input type="radio" name="ivp" ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-value="'FIX'">fixed
+							<input type="radio" name="ivp" ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-value="'VARIABLE'">variable-->
+							<span ng-show="params.interestVariationPlan=='VARIABLE'">
+								<input class="two-digit-input" type="number" ng-model="params.interestVariationFirst" ng-change="changed(name,params)">/
+								<input class="one-digit-input" type="number" ng-model="params.interestVariationNext" ng-change="changed(name,params)">CAP
+								<input class="one-digit-input" type="number" ng-model="params.interestVariationCap" ng-change="changed(name,params)">
+							</span>
+						</div>
 					</td>
 					<td>
 						<input class="short-input" type="number" ng-model="params.monthlyPayment" ng-show="params.type=='PAYMENT'" ng-change="changed(name,params)">
@@ -321,35 +445,13 @@
 					<td>
 						<input type="number" ng-model="params.sum" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">
 						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.sum | toFixed : 2}}</div>
+						<div class="grey-feedback" ng-show="params.type=='LOAN'">with interest : {{(params.total) | toFixed : 2}}</div>
 					</td>
-					<td>
-						<input class="short-input" type="number" ng-model="params.interest" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">
-						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.interest | toFixed : 2}}</div>
+					<td>ignore<input type="checkbox" ng-model="params.ignore" ng-change="changed(name,params)">
+						<button ng-show="name!=='NEW'" ng-click="deleteLine(name)">DEL</button>
+						<button ng-show="name=='NEW'" ng-click="addPayment()">ADD</button>
 					</td>
-					<td>ignore<input type="checkbox" ng-model="params.ignore" ng-change="changed(name,params)"><button ng-click="deleteLine(name)">DEL</button></td>
-				</tr>
-				<tr class="new-item">
-					<td><input type="text" ng-model="newPayment.name"></td>
-					<td><input type="month" ng-model="newPayment.startDate" ng-change="normalizeModel(newPayment)"></td>
-					<td><input type="month" ng-model="newPayment.endDate" ng-change="normalizeModel(newPayment)"></td>
-					<td>
-						<select ng-model="newPayment.type" ng-change="normalizeModel(newPayment)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select><br ng-show="newPayment.type=='LOAN'"/>
-						<select ng-model="newPayment.paymentPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FLAT">FLAT</option><option value="GROWING">GROWING</option><option value="DESCENDING">DESCENDING</option></select><br ng-show="newPayment.type=='LOAN'"/>
-						<select ng-model="newPayment.interestVariationPlan" ng-change="normalizeModel(newPayment)" ng-show="newPayment.type=='LOAN'"><option value="FIX">FIX</option><option value="10/5/5">10/5/5</option></select>
-					</td>
-					<td>
-						<input class="short-input" type="number" ng-model="newPayment.monthlyPayment" ng-show="newPayment.type=='PAYMENT'" ng-change="normalizeModel(newPayment)">
-						<div class="grey-feedback" ng-show="newPayment.type=='LOAN'">{{newPayment.monthlyPayment}}</div>
-					</td>
-					<td>
-						<input type="number" ng-model="newPayment.sum" ng-show="newPayment.type=='LOAN'" ng-change="normalizeModel(newPayment)">
-						<div class="grey-feedback" ng-show="newPayment.type=='PAYMENT'">{{newPayment.sum}}</div>
-					</td>
-					<td>
-						<input class="short-input" type="number" ng-model="newPayment.interest" ng-show="newPayment.type=='LOAN'" ng-change="normalizeModel(newPayment)">
-						<div class="grey-feedback" ng-show="newPayment.type=='PAYMENT'">{{newPayment.interest}}</div>
-					</td>
-					<td><button ng-click="addPayment()">ADD</button></td>
+					<td></td>
 				</tr>
 			</tbody>
 		</table>

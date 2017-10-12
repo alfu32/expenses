@@ -1,0 +1,43 @@
+
+.short-input{
+	width:6em;
+}
+.two-digit-input{
+	width:3em;
+}
+.one-digit-input{
+	width:2em;
+}
+table.spreadsheet {
+	border-collapse: collapse;
+}
+.spreadsheet input,.spreadsheet select{
+	box-sizing: border-box;
+	border:0;margin:0;outline:0;
+	background:0;
+	border-bottom: 1px solid #999;
+	height: 24px;
+}
+.spreadsheet>tbody,.spreadsheet>tbody>tr,.spreadsheet>tbody>tr>th{
+	margin:0;outline:0;padding:2px;
+	vertical-align:top;
+}
+.spreadsheet>tbody>tr{
+	border-bottom:1px solid #333;
+}
+.spreadsheet>tbody>tr:hover{
+	border-bottom:1px solid #000;
+	background:#CCC;
+}
+.spreadsheet>tbody>tr.new-item{
+	border-top:1px solid #999;
+	background:#EEE;
+	color:#222;
+}
+.grey-feedback{
+	font-size: 10px;
+	color:#555;
+}
+.focused{
+	border:1px solid #F33;
+}

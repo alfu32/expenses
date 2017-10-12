@@ -1,0 +1,71 @@
+﻿
+<body ng-app="xpenses">
+	<div ng-controller="mainController as _main" ng-drop-file="_main.dropFiles($event,$data)" ng-key="_main.keyPress($type,$stream)">
+		<h4>{{appData.name}} / version {{appData.ver}}</h4>
+		<nvd3 options="options" data="data"></nvd3>
+		
+		<table class="spreadsheet">
+			<tbody>
+				<tr>
+					<th>name</th>
+					<th>interval</th>
+					<th>type</th>
+					<th>installment</th>
+					<th>total</th>
+					<th></th>
+				</tr>
+				<tr ng-repeat="(name,params) in model">
+					<td><input type="text" ng-model="params.name" ng-change="changed(name,params)" placeholder="{{params.defaultName}}"></td>
+					<td><input type="month" ng-model="params.startDate" ng-change="changed(name,params)"><br>
+						<input type="month" ng-model="params.endDate" ng-change="changed(name,params)"></td>
+					<td>
+						<div>
+							<!--select ng-model="params.type" ng-change="changed(name,params)"><option value="PAYMENT">PAYMENT</option><option value="LOAN">LOAN</option></select-->
+							<button ng-click="_main.cycle(name,params,'type',k.PAYMENT_TYPE)">{{params.type}}</button>
+							<!--input type="radio" name="ptype" ng-checked="params.type=='PAYMENT'" ng-model="params.type" ng-change="changed(name,params)" ng-value="'PAYMENT'">fixed
+							<input type="radio" name="ptype" ng-checked="params.type=='LOAN'" ng-model="params.type" ng-change="changed(name,params)" ng-value="'LOAN'">loan-->
+							<span ng-show="params.type=='LOAN'">
+								@<input class="two-digit-input" type="number" ng-model="params.interest" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">%
+							</span>
+						</div>
+						<div ng-show="params.type=='LOAN'">
+							<!--select ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-show="params.type=='LOAN'"><option value="FLAT">FLAT</option><option value="LINEAR">LINEAR PAYMENT PLAN</option></select-->
+							<button ng-click="_main.cycle(name,params,'paymentPlan',k.REIMBURSEMENT_TYPE)">{{params.paymentPlan}}</button>
+							<!--input type="radio" name="ppptype" ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-value="'FLAT'">flat
+							<input type="radio" name="ppptype" ng-model="params.paymentPlan" ng-change="changed(name,params)" ng-value="'LINEAR'">linear-->
+							<input ng-show="(params.paymentPlan=='LINEAR')" class="two-digit-input" type="number" ng-model="params.paymentPlanVariation" 
+							ng-change="changed(name,params)">
+						</div>
+						<!--div style="display:inline-block"-->
+						<!--/div-->
+						<div ng-show="params.type=='LOAN'">
+							<!--select ng-model="params.interestVariationPlan" ng-change="changed(name,params)"><option value="FIX">FIXED RATE</option><option value="VARIABLE">VARIABLE RATE</option></select-->
+							<button ng-click="_main.cycle(name,params,'interestVariationPlan',k.RATE_TYPE)">{{params.interestVariationPlan}}</button>
+							<!--input type="radio" name="ivp" ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-value="'FIX'">fixed
+							<input type="radio" name="ivp" ng-model="params.interestVariationPlan" ng-change="changed(name,params)" ng-value="'VARIABLE'">variable-->
+							<span ng-show="params.interestVariationPlan=='VARIABLE'">
+								<input class="two-digit-input" type="number" ng-model="params.interestVariationFirst" ng-change="changed(name,params)">/
+								<input class="one-digit-input" type="number" ng-model="params.interestVariationNext" ng-change="changed(name,params)">CAP
+								<input class="one-digit-input" type="number" ng-model="params.interestVariationCap" ng-change="changed(name,params)">
+							</span>
+						</div>
+					</td>
+					<td>
+						<input class="short-input" type="number" ng-model="params.monthlyPayment" ng-show="params.type=='PAYMENT'" ng-change="changed(name,params)">
+						<div class="grey-feedback" ng-show="params.type=='LOAN'">{{params.monthlyPayment | toFixed : 2}}</div>
+					</td>
+					<td>
+						<input type="number" ng-model="params.sum" ng-show="params.type=='LOAN'" ng-change="changed(name,params)">
+						<div class="grey-feedback" ng-show="params.type=='PAYMENT'">{{params.sum | toFixed : 2}}</div>
+						<div class="grey-feedback" ng-show="params.type=='LOAN'">with interest : {{(params.total) | toFixed : 2}}</div>
+					</td>
+					<td>ignore<input type="checkbox" ng-model="params.ignore" ng-change="changed(name,params)">
+						<button ng-show="name!=='NEW'" ng-click="deleteLine(name)">DEL</button>
+						<button ng-show="name=='NEW'" ng-click="addPayment()">ADD</button>
+					</td>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</body>
